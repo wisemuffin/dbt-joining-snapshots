@@ -12,6 +12,14 @@ macros:
         type: list
         description: List of columns to exclude from the key (e.g. if you dont want to track them for SCD2)
 
+models:
+  - name: stg_product_important_status
+    columns:
+      - name: grain_id
+        tests:
+          - unique
+          - not_null
+
 # models:
 #   - name: my_first_dbt_model
 #     description: "A starter dbt model"
