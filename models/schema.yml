@@ -1,0 +1,32 @@
+
+version: 2
+
+macros:
+  - name: build_key_from_columns
+    description: For each row of data, this macro grabs each value from all the columns, except the columns we specify in the exclude list. 
+    arguments:
+      - name: table_name
+        type: string
+        description: The name of the table
+      - name: exclude
+        type: list
+        description: List of columns to exclude from the key (e.g. if you dont want to track them for SCD2)
+
+# models:
+#   - name: my_first_dbt_model
+#     description: "A starter dbt model"
+#     columns:
+#       - name: id
+#         description: "The primary key for this table"
+#         tests:
+#           - unique
+#           - not_null
+
+#   - name: my_second_dbt_model
+#     description: "A starter dbt model"
+#     columns:
+#       - name: id
+#         description: "The primary key for this table"
+#         tests:
+#           - unique
+#           - not_null
