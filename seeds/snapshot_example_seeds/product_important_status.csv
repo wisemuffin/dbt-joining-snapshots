@@ -1,3 +1,3 @@
-entity_id,unimportant_value,important_status,updated_at
-1,not cool,pending,2021-11-10 08:00:000
-2,not cool,not_available,2021-11-16 15:30:0000
+product_id,unimportant_value,important_status,updated_at
+1,cool,available,2021-11-15 16:00:00
+2,cool,not_available,2021-11-17 15:30:00

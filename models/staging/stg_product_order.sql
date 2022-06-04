@@ -1,29 +1,30 @@
-with product_important_status as (
+with product_order as (
 
     select 
         *
 
-    from {{ ref('product_important_status_snapshot') }}
+    from {{ ref('product_order_snapshot') }}
 
 )
 
 , data_types_and_renaming as (
     select
         PRODUCT_ID,
-        UNIMPORTANT_VALUE,
-        IMPORTANT_STATUS,
+        ORDER_ID,
+        PRODUCT_ORDER_ID,
+        ORDER_STATUS,
         UPDATED_AT,
         DBT_SCD_ID,
         DBT_UPDATED_AT,
         DBT_VALID_FROM,
         DBT_VALID_TO
-    from product_important_status
+    from product_order
 )
 
 , grain_id as (
 
     select 
-        {{ build_key_from_columns(table_name=ref('product_important_status_snapshot'), columns=['product_id','important_status']) }} as grain_id,
+        {{ build_key_from_columns(table_name=ref('product_order_snapshot'), columns=['product_id','product_order_id', 'order_id', 'order_status']) }} as grain_id,
         *
 
     from data_types_and_renaming
@@ -36,7 +37,7 @@ with product_important_status as (
 
       *,
       coalesce(
-          lag(grain_id) over (partition by product_id order by updated_at),
+          lag(grain_id) over (partition by product_order_id order by updated_at),
           'first_record'
       ) as previous_grain_id,
       case
