@@ -40,3 +40,9 @@ with historical_table_1 as (
 )
 select *
 from snap_join
+
+{% if var("current_records_only") %}
+
+where valid_to = cast('{{ var("high_date") }}' as timestamp)
+
+{% endif %}

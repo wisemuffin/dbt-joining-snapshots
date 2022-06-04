@@ -38,4 +38,5 @@ models:
       +materialized: view
 
 vars:
- high_date: '9999-12-31'
+ high_date: '9999-12-31' # used in place of null for dbt valid_to
+ current_records_only: false # switches all models to only latest records rather than all hist
