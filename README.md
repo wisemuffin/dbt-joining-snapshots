@@ -162,10 +162,44 @@ to get dbt_utils.star working in this macro [source](https://docs.getdbt.com/blo
 
 {% endmacro %}
 ```
-##
+## high date from snapshots is null as a result have to manually change it (how to autoamte?)
 
 valid_to uses a high_date instead of the default null that comes from dbt_valid_to. This is enable joining snapshots together based on dates.
 
 ```bash
 coalesce(dbt_valid_to, cast('{{ var("high_date") }}' as timestamp)) as valid_to
+```
+
+## valid_to and valid_from time stamps as the result from join_snapshots are named dynamicallly 
+
+TODO currently have manually check what the names of these columns are e.g.
+
+
+int_product_joined_to_order.sql
+
+```sql
+join_snapshots(...) ...
+
+select 
+    ...
+    add_product_order_valid_from as valid_from,
+    add_product_order_valid_to as valid_to,
+```
+
+## build spine part - a bit tricky
+
+This will create duplicates if not careful. You need to make sure you are joining on just the required grain i.e. only the latest record for the grain.
+In the below case the grain is product_order_id (but i also needed the join key)
+
+```sql
+build_spine as (
+
+    select
+        product_important_status.*,
+        product_order.product_order_id
+    from product_important_status
+    left join
+       (select product_id, product_order_id from product_order group by 1,2) as product_order 
+        on product_important_status.product_id = product_order.product_id
+)
 ```
