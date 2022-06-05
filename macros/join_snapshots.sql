@@ -19,7 +19,9 @@
        and (({{cte_join_on}}.{{cte_join_on_valid_from}} >= {{cte_join}}.{{cte_join_valid_from}}
        and {{cte_join_on}}.{{cte_join_on_valid_from}} < {{cte_join}}.{{cte_join_valid_to}})
        or ({{cte_join_on}}.{{cte_join_on_valid_to}} >= {{cte_join}}.{{cte_join_valid_from}}
-       and {{cte_join_on}}.{{cte_join_on_valid_to}} < {{cte_join}}.{{cte_join_valid_to}}))
+       and {{cte_join_on}}.{{cte_join_on_valid_to}} < {{cte_join}}.{{cte_join_valid_to}})
+       or ({{cte_join_on}}.{{cte_join_on_valid_from}} <= {{cte_join}}.{{cte_join_valid_from}}
+       and {{cte_join_on}}.{{cte_join_on_valid_to}} > {{cte_join}}.{{cte_join_valid_from}}))
       
   
 {% endmacro %}

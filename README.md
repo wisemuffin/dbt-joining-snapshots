@@ -116,8 +116,12 @@ dbt seed
 dbt snapshot
 ```
 
-## Second Example
+## Second Example of Remove Partial Duplicates to be used in snapshot join
 
+
+
+### first update
+./seeds/snapshot_example_seeds/product_order.csv
 ```csv
 product_id,order_id,product_order_id,order_status,updated_at
 1,A,1A,pending,2021-10-31 12:00:00
@@ -130,7 +134,8 @@ dbt seed
 dbt snapshot
 ```
 
-
+### seconds update
+./seeds/snapshot_example_seeds/product_order.csv
 ```csv
 product_id,order_id,product_order_id,order_status,updated_at
 1,A,1A,available,2021-11-15 16:00:00
