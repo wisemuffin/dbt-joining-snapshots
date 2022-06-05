@@ -106,7 +106,7 @@ dbt snapshot
 ./seeds/snapshot_example_seeds/product_important_status.csv
 ```csv
 product_id,unimportant_value,important_status,updated_at
-1,cool,available,2021-11-15 16:00:00
+1,cool,available,2021-11-15 15:00:00
 2,cool,not_available,2021-11-17 15:30:00
 
 ```

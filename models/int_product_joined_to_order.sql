@@ -67,7 +67,7 @@ with product_important_status as (
 
         -- only showing these columns to show the join windows, in prod wouldnt show the columns below
         valid_from_pis,
-        valid_to_pis
+        valid_to_pis,
         valid_from_po,
         valid_to_po
     from snap_join
