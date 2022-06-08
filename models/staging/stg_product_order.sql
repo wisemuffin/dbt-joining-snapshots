@@ -24,7 +24,7 @@ with product_order as (
 , grain_id as (
 
     select 
-        {{ build_key_from_columns(table_name=ref('product_order_snapshot'), columns=['product_id','product_order_id', 'order_id', 'order_status']) }} as grain_id,
+        {{ build_key_from_columns(table_name=ref('product_order_snapshot'), exclude=['UPDATED_AT','DBT_SCD_ID', 'DBT_UPDATED_AT', 'DBT_VALID_FROM', 'DBT_VALID_TO']) }} as grain_id,
         *
 
     from data_types_and_renaming

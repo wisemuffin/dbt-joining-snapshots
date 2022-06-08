@@ -1,11 +1,34 @@
-# CDC in DBT
+# How to join snapshots in DBT
 
-Change data capture in BDT can be broken down into a few steps
+This repo follows along to the brilliant write ups that Lauren Benezra did over in the [dbt developer blog](https://docs.getdbt.com/blog) so please read the below blogs first!
 
-- snapshots - recording effective from and to dates
-- remove partial duplicates
+- [removing partial duplicates](https://docs.getdbt.com/blog/how-we-remove-partial-duplicates)
+- [Joining snapshots](https://docs.getdbt.com/blog/joining-snapshot-complexity)
 
-# Partitial Duplicates
+This repo follows the blogs above, and provides a way of seeding this data into **snowflake**.
+
+# Snapshots
+
+[How to track data changes with dbt snapshots](https://www.getdbt.com/blog/track-data-changes-with-dbt-snapshots/)
+
+## Types of Data
+
+**Mutable:** Records are updated in-place over time. A typical example is an orders table,  where the status column changes as the order is processed.
+
+**Immutable:** Once a record is created, it is never updated again. A typical example is clickstream data, like a page_viewed or link_clicked. Once that event is recorded, it won’t be updated again.
+
+## Why do we need snapshots:
+
+Applications often store data in mutable tables. The engineers that design these applications typically want to read and modify the current state of a row – recording and managing the historical values for every row in a database is extra work that costs brain power and CPU cycles.
+
+## limitations
+
+**snapshotting will not replace having a full history table.**
+
+Snapshots, by their very nature, are not idempotent. The results of a snapshot operation will vary depending on if you run dbt snapshot once per hour or once per day. Further, there’s no way to go back in time and re-snapshot historical data. Once a source record has been mutated, the previous state of that record is effectively lost forever. By snapshotting your sources, you can maximize the amount of data that you track, and in turn, maximize your modeling optionality.
+
+
+# Partial Duplicates
 
 These special dupes are not the basic ones that have same exact values in every column and duplicate primary keys that can be easily fixed by haphazardly throwing in a distinct.
 
@@ -28,28 +51,8 @@ The combination of `product_id` + [changing column(s)] you want to capture becom
 
 ## how to remove partial duplicates
 
-After we have the grain id defined simply then remove any duplicates by filtering on just the first occurance.
+After we have the grain id defined simply then remove any duplicates by filtering on just the first occurrence.
 
-
-# Snapshots
-
-[How to track data changes with dbt snapshots](https://www.getdbt.com/blog/track-data-changes-with-dbt-snapshots/)
-
-## Types of Data
-
-**Mutable:** Records are updated in-place over time. A typical example is an orders table,  where the status column changes as the order is processed.
-
-**Immutable:** Once a record is created, it is never updated again. A typical example is clickstream data, like a page_viewed or link_clicked. Once that event is recorded, it won’t be updated again.
-
-## Why do we need snapshots:
-
-Applications often store data in mutable tables. The engineers that design these applications typically want to read and modify the current state of a row – recording and managing the historical values for every row in a database is extra work that costs brain power and CPU cycles.
-
-## limitations
-
-**snapshotting will not replace having a full history table.**
-
-Snapshots, by their very nature, are not idempotent. The results of a snapshot operation will vary depending on if you run dbt snapshot once per hour or once per day. Further, there’s no way to go back in time and re-snapshot historical data. Once a source record has been mutated, the previous state of that record is effectively lost forever. By snapshotting your sources, you can maximize the amount of data that you track, and in turn, maximize your modeling optionality.
 
 # Joining Snapshots
 
