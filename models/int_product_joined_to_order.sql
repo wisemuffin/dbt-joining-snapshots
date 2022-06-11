@@ -55,11 +55,12 @@ with product_important_status as (
 
 , rename as (
     select 
-        product_id,
-        product_order_id,
-        order_id,
-        important_status,
-        order_status,
+        product_id as product_id_pis,
+        product_order_id as product_order_id_pis,
+        important_status as important_status_pis,
+
+        order_id as order_id_po,
+        order_status as order_status_po,
 
         -- these 2 columns are the valid ranges from the resulting join_snapshots -- todo make this dynamic
         add_product_order_valid_from as valid_from,

@@ -5,7 +5,17 @@ This repo follows along to the brilliant write ups that Lauren Benezra did over 
 - [removing partial duplicates](https://docs.getdbt.com/blog/how-we-remove-partial-duplicates)
 - [Joining snapshots](https://docs.getdbt.com/blog/joining-snapshot-complexity)
 
-This repo follows the blogs above, and provides a way of seeding this data into **snowflake**.
+This repo follows the blogs above, and provides a way of seeding some test data into **snowflake**.
+
+Almost all of this documentation is just a copy of Lauren's work.
+
+# Objective of this project
+
+Remove any partital duplicates before joining snapshots.
+
+Join 2 snapshot together to create new data. For example joining our product order and product important status tables will show the product order cant make it to the status available until the the important status is also available (highlighted below in yellow):
+
+![alt text](./static/snapshot_joined_example.PNG "Title")
 
 # Snapshots
 
@@ -64,15 +74,73 @@ Ultimately, our goal is to capture the history for the `product_id` and join the
 
 For historical_table_1 and historical_table_2, we will join on `product_id` where historical_table_1.valid_from to historical_table_1.valid_to has overlapping time with historical_table_2.valid_from to historical_table_2.valid_to.
 
-## NBNs joining of snapshots / historic records
 
-TODO
+# Example of How to Join Snapshots
 
-# Examples
+We will create 2 different snapshots to simulate transaction with event history and will do this in 2 Remove Partial Duplicates examples.
+
+We will then join these two snapshots at different grains to generate a combined grain where we can see which events were overlapping and which were not.
+
+## Prerequisites
+
+- python and [pipenv](https://pipenv.pypa.io/en/latest/) installed if using dbt cli
+- snowflake account [sign up for 1 month free](https://www.snowflake.com/)
+- add a profile called dbt_joining_snapshots with your snowflake creds to either [dbt cloud setup](https://docs.getdbt.com/guides/getting-started/getting-set-up/setting-up-snowflake) or via your [dbt cli setup](https://docs.getdbt.com/reference/warehouse-profiles/snowflake-profile)
+- create a your user and roles in snowflake. example below:
+
+```sql
+USE ROLE ACCOUNTADMIN; -- you need accountadmin (or security admin) for user creation, future grants
+
+DROP USER IF EXISTS DBT_JOINING_SNAPSHOTS_DBT_CLOUD;
+DROP ROLE IF EXISTS DBT_JOINING_SNAPSHOTS_TRANSFORMER;
+DROP DATABASE IF EXISTS DBT_JOINING_SNAPSHOTS_DATABASE CASCADE;
+DROP WAREHOUSE IF EXISTS DBT_JOINING_SNAPSHOTS_TRANSFORMING;
+
+-- creating a warehouse
+CREATE WAREHOUSE DBT_JOINING_SNAPSHOTS_TRANSFORMING WITH WAREHOUSE_SIZE = 'XSMALL' WAREHOUSE_TYPE = 'STANDARD' AUTO_SUSPEND = 60 AUTO_RESUME = TRUE COMMENT = 'Warehouse to transform data';
+
+-- creating database
+CREATE DATABASE DBT_JOINING_SNAPSHOTS_DATABASE COMMENT = 'your first analytics engineering project';
+
+-- creating an access role
+CREATE ROLE DBT_JOINING_SNAPSHOTS_TRANSFORMER COMMENT = 'Role for dbt';
+
+-- granting role permissions
+GRANT USAGE,OPERATE ON WAREHOUSE DBT_JOINING_SNAPSHOTS_TRANSFORMING TO ROLE DBT_JOINING_SNAPSHOTS_TRANSFORMER;
+GRANT USAGE,CREATE SCHEMA ON DATABASE DBT_JOINING_SNAPSHOTS_DATABASE TO ROLE DBT_JOINING_SNAPSHOTS_TRANSFORMER;
+
+
+GRANT USAGE ON DATABASE DBT_JOINING_SNAPSHOTS_DATABASE TO ROLE DBT_JOINING_SNAPSHOTS_TRANSFORMER;
+GRANT USAGE ON ALL SCHEMAS IN DATABASE DBT_JOINING_SNAPSHOTS_DATABASE TO ROLE DBT_JOINING_SNAPSHOTS_TRANSFORMER;
+GRANT SELECT ON ALL TABLES IN DATABASE DBT_JOINING_SNAPSHOTS_DATABASE TO ROLE DBT_JOINING_SNAPSHOTS_TRANSFORMER;
+
+GRANT USAGE ON FUTURE SCHEMAS IN DATABASE DBT_JOINING_SNAPSHOTS_DATABASE TO ROLE DBT_JOINING_SNAPSHOTS_TRANSFORMER;
+GRANT SELECT ON FUTURE TABLES IN DATABASE DBT_JOINING_SNAPSHOTS_DATABASE TO ROLE DBT_JOINING_SNAPSHOTS_TRANSFORMER;
+
+
+-- creating user and associating with role
+CREATE USER DBT_JOINING_SNAPSHOTS_DBT_CLOUD PASSWORD='CHANGE_ME_PLEASE' DEFAULT_ROLE = DBT_JOINING_SNAPSHOTS_TRANSFORMER;
+-- Make sure you change the above password! Add the flag -- MUST_CHANGE_PASSWORD = true to force a password change too
+GRANT ROLE DBT_JOINING_SNAPSHOTS_TRANSFORMER TO USER DBT_JOINING_SNAPSHOTS_DBT_CLOUD;
+
+-- grant all roles to sysadmin (always do this)
+GRANT ROLE DBT_JOINING_SNAPSHOTS_TRANSFORMER  TO ROLE SYSADMIN;
+```
+
+-- then in your dbt directory in dbt cloud or the cli run **dbt deps** this install the dbt utils library.
+
+```bash
+dbt deps
+```
+
+
+... now you can run the below steps...
 
 ## Remove Partial Duplicates
 
-dbt seed will be our mutable source command.
+We will reproduce mutable data by running the dbt command **dbt seed** several times with different data.
+
+dbt seed will load data into snowflake by mutating the target table. But after each seed we will snapshot the data to record the histroy of these records.
 
 ### First get the initial application state into dbt source tables
 
@@ -119,9 +187,56 @@ dbt seed
 dbt snapshot
 ```
 
+### review your snapshot data
+
+Now take a look at your snapshot tables created:
+
+```sql
+select *
+from dbt_joining_snapshots_database.snapshots.product_important_status_snapshot
+```
+
+notice the new columns capturing when changes happen to DBT_UPDATED_AT, DBT_VALID_FROM, DBT_VALID_TO
+
+![alt text](./static/dbt_snapshot_example.PNG "Title")
+
+
+### remove partital duplicates
+
+checkout the staging table **stg_product_important_status.sql** built ontop of the snapshot we have just built.
+
+First we create a natural key for the row and hash it with this step:
+
+```jinja2
+{{ build_key_from_columns(table_name=ref('product_important_status_snapshot'), exclude=['UNIMPORTANT_VALUE', 'UPDATED_AT','DBT_SCD_ID', 'DBT_UPDATED_AT', 'DBT_VALID_FROM', 'DBT_VALID_TO']) }} as grain_id,
+```
+
+
+then we find only the records with diffs we care about:
+
+```jinja2
+, mark_real_diffs as (
+
+  select
+
+      *,
+      coalesce(
+          lag(grain_id) over (partition by product_id order by updated_at),
+          'first_record'
+      ) as previous_grain_id,
+      case
+          when grain_id != previous_grain_id then true 
+          else false
+      end as is_real_diff
+
+  from grain_id
+
+)
+```
+
 ## Second Example of Remove Partial Duplicates to be used in snapshot join
 
-
+This is a repeat of the first example, but we need 2 snapshot to join so doesnt hurt doing a similar example.
 
 ### first update
 ./seeds/snapshot_example_seeds/product_order.csv
@@ -150,26 +265,32 @@ dbt seed
 dbt snapshot
 ```
 
+## Joining snapshots
+
+We take the two snapshots created in the removing partial duplicates examples above:
+
+- dbt_joining_snapshots_database.snapshots.product_important_status_snapshot
+- dbt_joining_snapshots_database.snapshots.product_order_snapshot
+
+and join them in **int_product_joined_to_order.sql**
+
+The main part of this is the macro called **join_snapshots** which uses the effective from and to timestamps to join the two different grain events.
+
+Simply run:
+
+```bash
+dbt run
+```
+and review the joined snapshot over in **int_product_joined_to_order**
+
+notice hot the product important status (PIS) and product order (PO) are now joined when then their valid dates overlap.
+Its also clear here that the product order cant make it to the status available until the the important status is also available (highlighted below in yellow):
+
+![alt text](./static/snapshot_joined_example.PNG "Title")
+
+
 # TODO
 
-## build_key_from_columns -- update with star
-
-to get dbt_utils.star working in this macro [source](https://docs.getdbt.com/blog/how-we-remove-partial-duplicates)
-```jinja
-{% macro build_key_from_columns(table_name, exclude=[]) %}
-
-{% set cols = {{ dbt_utils.star(from=ref('table_name'), except = exclude) }} %}
- 
-{%- for col in cols -%}
-
-    {%- do col_list.append("coalesce(cast(" ~ col.column ~ " as " ~ dbt_utils.type_string() ~ "), '')")  -%}
-
-{%- endfor -%}
-
-{{ return(dbt_utils.surrogate_key(col_list)) }}
-
-{% endmacro %}
-```
 ## high date from snapshots is null as a result have to manually change it (how to autoamte?)
 
 valid_to uses a high_date instead of the default null that comes from dbt_valid_to. This is enable joining snapshots together based on dates.
